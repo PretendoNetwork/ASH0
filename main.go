@@ -14,7 +14,7 @@ func decompressAsh(ashFile string) []byte {
 		log.Fatal(err)
 	}
 
-	cmd := exec.Command(dir+"\\AshUtils.exe", "decompress", "test.ash")
+	cmd := exec.Command(dir+"\\AshUtils.exe", "decompress", ashFile)
 	out, err := cmd.Output()
 	if err != nil {
 		log.Fatalf("%s", out)

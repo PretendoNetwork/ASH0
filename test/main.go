@@ -13,6 +13,7 @@
 		but the original (https://github.com/giantpune/wii-system-menu-player/blob/master/source/utils/ash.cpp)
 		implementation was written for big endian
 
+
 	[C++ CODE]
 	- *reinterpret_cast<uint32*>(in.data())
 	OR (less safe)
@@ -25,10 +26,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"unsafe"
 )
 
@@ -542,8 +546,58 @@ loc_81332434:
 }
 
 func main() {
+	fmt.Printf("Language: Go\n")
 	var filepath = "test.ash"
+	fmt.Printf("Checking file \"%s\"\n", filepath)
+
 	var data = loadAshFileIntoSlice(filepath)
+
 	fmt.Printf("isAshCompressed: %t\n", isAshCompressed(data))
+
 	ioutil.WriteFile("out.ash", decompressAsh(data), 0644)
+
+	if deepCompare("out.ash", "out_real.ash") {
+		fmt.Println("Decompression successful")
+	} else {
+		fmt.Println("Decompression unsuccessful")
+	}
+}
+
+// Stolen from stackoverflow to compare files
+const chunkSize = 64000
+
+func deepCompare(file1, file2 string) bool {
+	// Check file size ...
+
+	f1, err := os.Open(file1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	f2, err := os.Open(file2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		b1 := make([]byte, chunkSize)
+		_, err1 := f1.Read(b1)
+
+		b2 := make([]byte, chunkSize)
+		_, err2 := f2.Read(b2)
+
+		if err1 != nil || err2 != nil {
+			if err1 == io.EOF && err2 == io.EOF {
+				return true
+			} else if err1 == io.EOF || err2 == io.EOF {
+				return false
+			} else {
+				log.Fatal(err1, err2)
+			}
+		}
+
+		if !bytes.Equal(b1, b2) {
+			return false
+		}
+	}
 }

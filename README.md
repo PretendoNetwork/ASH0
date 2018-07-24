@@ -33,4 +33,4 @@ out := ash0.Decompress(data)
 
 - If you're running the code on a big endian machine, be sure to set the `IsLittleEndian` boolean to false
 - There's a lot of pointer arithmetic in the source code, so if VSCode warns you about `Possible misuse of unsafe.Pointer`, just laugh it off
-- If you have any questions feel free to ask me in the Pretendo discord (make sure to ping me @Nybbit#5412)
+- If you have any questions feel free to ask me in the [Pretendo discord](https://discord.me/pretendo) (make sure to ping me @Nybbit#5412)

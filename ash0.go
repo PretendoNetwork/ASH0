@@ -13,7 +13,6 @@
 		but the original (https://github.com/giantpune/wii-system-menu-player/blob/master/source/utils/ash.cpp)
 		implementation was written for big endian
 
-
 	[C++ CODE]
 	- *reinterpret_cast<uint32*>(in.data())
 	OR (less safe)
@@ -23,33 +22,19 @@
 	- *(*uint32)(unsafe.Pointer(&data[0]))
 */
 
-package main
+package ash0
 
 import (
-	"bytes"
 	"encoding/binary"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"os"
 	"unsafe"
 )
 
 // IsLittleEndian - Whether or not the CPU is little endian. Most modern CPUs are but if yours isn't for some reason, change this
-const IsLittleEndian = true
+var IsLittleEndian = true
 
-// loadAshFileIntoSlice - Loads an ash file into a uint8 slice
-func loadAshFileIntoSlice(path string) []uint8 {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return b
-}
-
-// BYTESWAP32 - If it's little endian, it sets it to big endian, otherwise it doesn't do anything
-func BYTESWAP32(in uint32) uint32 {
+// byteSwap32 - If it's little endian, it sets it to big endian, otherwise it doesn't do anything
+func byteSwap32(in uint32) uint32 {
 	if IsLittleEndian {
 		value := make([]uint8, unsafe.Sizeof(uint32(0)))
 		binary.LittleEndian.PutUint32(value, in)
@@ -58,8 +43,8 @@ func BYTESWAP32(in uint32) uint32 {
 	return in
 }
 
-// BYTESWAP16 - If it's little endian, it sets it to big endian, otherwise it doesn't do anything
-func BYTESWAP16(in uint16) uint16 {
+// byteSwap16 - If it's little endian, it sets it to big endian, otherwise it doesn't do anything
+func byteSwap16(in uint16) uint16 {
 	if IsLittleEndian {
 		value := make([]uint8, unsafe.Sizeof(uint16(0)))
 		binary.LittleEndian.PutUint16(value, in)
@@ -68,16 +53,16 @@ func BYTESWAP16(in uint16) uint16 {
 	return in
 }
 
-// isAshCompressed - Checks if an ASH file is compressed
-func isAshCompressed(data []uint8) bool {
+// IsAshCompressed - Checks if an ASH file is compressed
+func IsAshCompressed(data []uint8) bool {
 	return uint32(len(data)) > 0x10 &&
-		(BYTESWAP32(*(*uint32)(unsafe.Pointer(&data[0])))&0xFFFFFF00) == 0x41534800
+		(byteSwap32(*(*uint32)(unsafe.Pointer(&data[0])))&0xFFFFFF00) == 0x41534800
 }
 
-// decompressAsh - Decompresses an ASH file
-func decompressAsh(data []uint8) []uint8 {
+// Decompress - Decompresses an ASH file
+func Decompress(data []uint8) []uint8 {
 	// Check to make sure that it is a compressed ASH file
-	if !isAshCompressed(data) {
+	if !IsAshCompressed(data) {
 		log.Fatalln("Ash is not compressed")
 	}
 
@@ -91,12 +76,12 @@ func decompressAsh(data []uint8) []uint8 {
 	r[5] = 0x415348
 	r[6] = 0x415348
 
-	r[5] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 4))) // "Possible misuse of unsafe.Pointer" lol
+	r[5] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 4))) // "Possible misuse of unsafe.Pointer" lol
 	r[5] = r[5] & 0x00FFFFFF
 
 	var size = r[5]
 
-	fmt.Printf("Decompressed size: %d\n", size)
+	// fmt.Printf("Decompressed size: %d\n", size)
 
 	crap2 := make([]uint8, size)
 	if uint32(len(crap2)) != size {
@@ -113,11 +98,11 @@ func decompressAsh(data []uint8) []uint8 {
 	var o = r[3]
 
 	r[24] = 0x10
-	r[28] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 8)))
+	r[28] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 8)))
 	r[25] = 0
 	r[29] = 0
-	r[26] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 0xC)))
-	r[30] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]) + int64(r[28]) + inDiff))))
+	r[26] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4])+inDiff) + 0xC)))
+	r[30] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]) + int64(r[28]) + inDiff))))
 	r[28] = r[28] + 4
 
 	// HACK, pointer to RAM
@@ -161,7 +146,7 @@ loc_81332124:
 	}
 
 	r[0] = r[26] >> 31
-	r[26] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
+	r[26] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
 	r[25] = 0
 	r[24] = r[24] + 4
 	goto loc_8133214C
@@ -179,9 +164,9 @@ loc_8133214C:
 	}
 
 	r[0] = r[23] | 0x8000
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[0])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + outDiff2))) = uint16(byteSwap16(uint16(r[0])))
 	r[0] = r[23] | 0x4000
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + 2 + outDiff2))) = uint16(BYTESWAP16(uint16(r[0])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + 2 + outDiff2))) = uint16(byteSwap16(uint16(r[0])))
 
 	r[31] = r[31] + 4
 	r[27] = r[27] + 2
@@ -211,7 +196,7 @@ loc_81332174:
 
 loc_8133219C:
 
-	r[26] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
+	r[26] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
 	r[25] = 0
 	r[24] = r[24] + 4
 	goto loc_813321D0
@@ -220,7 +205,7 @@ loc_813321AC:
 
 	r[0] = (^(r[12] - 0x20)) + 1
 	r[6] = r[26] >> r[0]
-	r[26] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
+	r[26] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
 	r[0] = (^(r[21] - 0x40)) + 1
 	r[24] = r[24] + 4
 	r[0] = r[26] >> r[0]
@@ -230,7 +215,7 @@ loc_813321AC:
 
 loc_813321D0:
 
-	r[12] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[31])+outDiff2) - 2))))))
+	r[12] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[31])+outDiff2) - 2))))))
 	r[31] -= 2
 	r[27] = r[27] - 1
 	r[0] = r[12] & 0x8000
@@ -239,7 +224,7 @@ loc_813321D0:
 		goto loc_813321F8
 	}
 
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[9]+r[12]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[6])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[9]+r[12]) + outDiff2))) = uint16(byteSwap16(uint16(r[6])))
 	r[6] = (r[12] & 0x3FFF) >> 1 // extrwi %r6, %r12, 14,17
 	if r[27] != 0 {
 		goto loc_813321D0
@@ -249,7 +234,7 @@ loc_813321D0:
 
 loc_813321F8:
 
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[8]+r[12]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[6])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[8]+r[12]) + outDiff2))) = uint16(byteSwap16(uint16(r[6])))
 	r[23] = r[22]
 	goto loc_81332124
 
@@ -265,7 +250,7 @@ loc_8133220C:
 	}
 
 	r[0] = r[30] >> 31
-	r[30] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
+	r[30] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
 	r[29] = 0
 	r[28] = r[28] + 4
 	goto loc_81332234
@@ -283,9 +268,9 @@ loc_81332234:
 	}
 
 	r[0] = r[23] | 0x8000
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[0])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + outDiff2))) = uint16(byteSwap16(uint16(r[0])))
 	r[0] = r[23] | 0x4000
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + 2 + outDiff2))) = uint16(BYTESWAP16(uint16(r[0])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[31]) + 2 + outDiff2))) = uint16(byteSwap16(uint16(r[0])))
 
 	r[31] = r[31] + 4
 	r[27] = r[27] + 2
@@ -315,7 +300,7 @@ loc_8133225C:
 
 loc_81332284:
 
-	r[30] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
+	r[30] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
 	r[29] = 0
 	r[28] = r[28] + 4
 	goto loc_813322B8
@@ -324,7 +309,7 @@ loc_81332294:
 
 	r[0] = (^(r[12] - 0x20)) + 1
 	r[7] = r[30] >> r[0]
-	r[30] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
+	r[30] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
 	r[0] = (^(r[21] - 0x40)) + 1
 	r[28] = r[28] + 4
 	r[0] = r[30] >> r[0]
@@ -334,7 +319,7 @@ loc_81332294:
 
 loc_813322B8:
 
-	r[12] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[31])+outDiff2) - 2))))))
+	r[12] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[31])+outDiff2) - 2))))))
 	r[31] -= 2
 	r[27] = r[27] - 1
 	r[0] = r[12] & 0x8000
@@ -343,7 +328,7 @@ loc_813322B8:
 		goto loc_813322E0
 	}
 
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[11]+r[12]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[7])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[11]+r[12]) + outDiff2))) = uint16(byteSwap16(uint16(r[7])))
 	r[7] = (r[12] & 0x3FFF) >> 1 // extrwi %r7, %r12, 14,17
 	if r[27] != 0 {
 		goto loc_813322B8
@@ -353,7 +338,7 @@ loc_813322B8:
 
 loc_813322E0:
 
-	*(*uint16)(unsafe.Pointer(uintptr(int64(r[10]+r[12]) + outDiff2))) = uint16(BYTESWAP16(uint16(r[7])))
+	*(*uint16)(unsafe.Pointer(uintptr(int64(r[10]+r[12]) + outDiff2))) = uint16(byteSwap16(uint16(r[7])))
 	r[23] = r[22]
 	goto loc_8133220C
 
@@ -376,7 +361,7 @@ loc_813322F4:
 	}
 
 	r[31] = r[26] >> 31
-	r[26] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
+	r[26] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[24]) + inDiff))))
 	r[24] = r[24] + 4
 	r[25] = 0
 	goto loc_81332324
@@ -394,12 +379,12 @@ loc_81332324:
 		goto loc_81332334
 	}
 
-	r[12] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[8]+r[27]) + outDiff2)))))))
+	r[12] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[8]+r[27]) + outDiff2)))))))
 	goto loc_813322F4
 
 loc_81332334:
 
-	r[12] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[9]+r[27]) + outDiff2)))))))
+	r[12] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[9]+r[27]) + outDiff2)))))))
 	goto loc_813322F4
 
 loc_8133233C:
@@ -432,7 +417,7 @@ loc_81332360:
 	}
 
 	r[31] = r[30] >> 31
-	r[30] = BYTESWAP32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
+	r[30] = byteSwap32(*(*uint32)(unsafe.Pointer(uintptr(int64(r[4]+r[28]) + inDiff))))
 	r[28] = r[28] + 4
 	r[29] = 0
 	goto loc_81332390
@@ -450,12 +435,12 @@ loc_81332390:
 		goto loc_813323A0
 	}
 
-	r[23] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[10]+r[27]) + outDiff2)))))))
+	r[23] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[10]+r[27]) + outDiff2)))))))
 	goto loc_81332360
 
 loc_813323A0:
 
-	r[23] = uint32(uint16(BYTESWAP16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[11]+r[27]) + outDiff2)))))))
+	r[23] = uint32(uint16(byteSwap16(uint16(*(*uint16)(unsafe.Pointer(uintptr(int64(r[11]+r[27]) + outDiff2)))))))
 	goto loc_81332360
 
 loc_813323A8:
@@ -543,61 +528,4 @@ loc_81332434:
 	}
 
 	return ret
-}
-
-func main() {
-	fmt.Printf("Language: Go\n")
-	var filepath = "test.ash"
-	fmt.Printf("Checking file \"%s\"\n", filepath)
-
-	var data = loadAshFileIntoSlice(filepath)
-
-	fmt.Printf("isAshCompressed: %t\n", isAshCompressed(data))
-
-	ioutil.WriteFile("out.ash", decompressAsh(data), 0644)
-
-	if deepCompare("out.ash", "out_real.ash") {
-		fmt.Println("Decompression successful")
-	} else {
-		fmt.Println("Decompression unsuccessful")
-	}
-}
-
-// Stolen from stackoverflow to compare files
-const chunkSize = 64000
-
-func deepCompare(file1, file2 string) bool {
-	// Check file size ...
-
-	f1, err := os.Open(file1)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	f2, err := os.Open(file2)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for {
-		b1 := make([]byte, chunkSize)
-		_, err1 := f1.Read(b1)
-
-		b2 := make([]byte, chunkSize)
-		_, err2 := f2.Read(b2)
-
-		if err1 != nil || err2 != nil {
-			if err1 == io.EOF && err2 == io.EOF {
-				return true
-			} else if err1 == io.EOF || err2 == io.EOF {
-				return false
-			} else {
-				log.Fatal(err1, err2)
-			}
-		}
-
-		if !bytes.Equal(b1, b2) {
-			return false
-		}
-	}
 }

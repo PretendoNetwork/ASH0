@@ -1,5 +1,9 @@
 # ASH0 decompression written in native go
 
+### godoc
+
+Available here: https://godoc.org/github.com/PretendoNetwork/ASH0
+
 ### How to install and use
 
 1. Install the package with the command `go get https://github.com/PretendoNetwork/ASH0`
